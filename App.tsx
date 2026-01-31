@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { HashRouter, Routes, Route, Navigate, useNavigate, useLocation, Outlet } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { 
   LayoutDashboard, 
   Activity, 
@@ -235,24 +235,33 @@ const AdminDashboard = () => {
         schools: 0,
         finished: 0
     });
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         const fetchStats = async () => {
-            const { count: subjectCount } = await supabase.from('subjects').select('*', { count: 'exact', head: true });
-            const { count: studentCount } = await supabase.from('students').select('*', { count: 'exact', head: true });
-            const { data: schoolData } = await supabase.from('students').select('school');
-            const uniqueSchools = new Set(schoolData?.map(s => s.school)).size;
-            const { count: finishedCount } = await supabase.from('students').select('*', { count: 'exact', head: true }).eq('status', 'finished');
+            try {
+                const { count: subjectCount } = await supabase.from('subjects').select('*', { count: 'exact', head: true });
+                const { count: studentCount } = await supabase.from('students').select('*', { count: 'exact', head: true });
+                const { data: schoolData } = await supabase.from('students').select('school');
+                const uniqueSchools = new Set(schoolData?.map(s => s.school)).size;
+                const { count: finishedCount } = await supabase.from('students').select('*', { count: 'exact', head: true }).eq('status', 'finished');
 
-            setStats({
-                subjects: subjectCount || 0,
-                students: studentCount || 0,
-                schools: uniqueSchools || 0,
-                finished: finishedCount || 0
-            });
+                setStats({
+                    subjects: subjectCount || 0,
+                    students: studentCount || 0,
+                    schools: uniqueSchools || 0,
+                    finished: finishedCount || 0
+                });
+            } catch (e) {
+                console.error(e);
+            } finally {
+                setLoading(false);
+            }
         };
         fetchStats();
     }, []);
+
+    if (loading) return <div className="p-8 text-center"><Loader className="animate-spin inline mr-2 text-blue-600"/> Memuat data...</div>;
 
     return (
     <div className="space-y-6 animate-fade-in-up">
@@ -1053,7 +1062,7 @@ const CetakKartu = () => {
             const { data } = await supabase.from('students').select('*').order('name');
             if(data) {
                 setStudents(data.map(s => ({...s, isLogin: s.is_login})));
-                // Extract Unique Schools from Students
+                // Extract Unique Schools from Students with strict typing
                 const uniqueSchools = Array.from(new Set(data.map((item: any) => item.school)))
                    .filter((s): s is string => typeof s === 'string' && s.length > 0)
                    .sort();
@@ -1527,7 +1536,7 @@ const ExamInterface = () => {
                         text: text,
                         options: options,
                         correctAnswer: correctAnswerIndex,
-                        type: 'pilihan_ganda',
+                        type: 'pilihan_ganda' as const, // Strict type casting
                         imgUrl: q['Url Gambar'] && !q['Url Gambar'].startsWith('no-image') && !q['Url Gambar'].startsWith('auto-') ? q['Url Gambar'] : null,
                         shuffledOptions: optionsWithIndex 
                     };
@@ -1924,7 +1933,7 @@ const StudentLayout = () => {
 
 const App = () => {
   return (
-    <HashRouter>
+    <BrowserRouter>
        <Routes>
          <Route path="/" element={<UniversalLogin />} />
          
@@ -1951,7 +1960,7 @@ const App = () => {
 
          <Route path="*" element={<Navigate to="/" />} />
        </Routes>
-    </HashRouter>
+    </BrowserRouter>
   );
 };
 
